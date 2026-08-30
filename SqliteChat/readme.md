@@ -43,3 +43,54 @@ dotnet chat.cs
 Both C# programs use the .NET 10 file-based app format, so they can be run directly from their .cs files without creating .csproj project files.
 
 The MCP server creates a SQLite database named sqlite.db by default.
+
+Here is example output from the chat app:
+```console
+>dotnet chat.cs
+
+Your prompt:
+Can you show the rows in the authors table?
+
+AI Response:
+Here are the rows from the **authors** table (limited to the first 100 rows):
+
+| id | first_name | last_name | birth_year |
+|----|------------|-----------|------------|
+| 1  | George     | Orwell    | 1903 |
+| 2  | Jane       | Austen    | 1775 |
+| 3  | J.K.       | Rowling   | 1965 |
+| 4  | F. Scott   | Fitzgerald| 1896 |
+
+*(Only four rows are present in this sample data.)*
+
+Your prompt:
+Hey can you change J.K.'s name to Joanne please then run a query to make sure it worked.
+
+AI Response:
+The name was successfully updated from **J.K.** to **Joanne**. Here’s the current state of the **authors** table:
+
+| id | first_name | last_name | birth_year |
+|----|------------|-----------|------------|
+| 1  | George     | Orwell    | 1903 |
+| 2  | Jane       | Austen    | 1775 |
+| 3  | Joanne     | Rowling   | 1965 |
+| 4  | F. Scott   | Fitzgerald| 1896 |
+
+The query confirmed that the row was correctly modified.
+
+Your prompt:
+```
+
+Here is an example of the mcp.cs app log output:
+```text
+info: ModelContextProtocol.Server.McpServer[570385771]
+      Server (mcp 1.0.0.0), Client (chat 1.0.0.0) method 'tools/call' request handler called.
+info: McpTool[0]
+      execute sql: UPDATE authors SET first_name = 'Joanne' WHERE first_name = 'J.K.'
+info: McpTool[0]
+      sql result: 1 rows affected
+info: ModelContextProtocol.Server.McpServer[2065726448]
+      "execute_sql" completed. IsError = False.
+info: ModelContextProtocol.Server.McpServer[1867955179]
+      Server (mcp 1.0.0.0), Client (chat 1.0.0.0) method 'tools/call' request handler completed in 13.6716ms.
+```
