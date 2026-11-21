@@ -13,27 +13,26 @@ The sequence below shows the complete path from loading the static page to click
 ```mermaid
 sequenceDiagram
     participant Browser
-    participant Static as Static site (static.cs)
-    participant Broker as Broker (broker.cs)
-    participant SignalR as Azure SignalR Service
-    participant Backend as Blazor backend (components.cs)
+    participant StaticSite
+    participant Broker
+    participant AzureSignalR
+    participant BlazorBackend
 
-    Note over SignalR,Backend: Backend starts independently
-    Backend->>SignalR: Open outbound server connections
-
-    Browser->>Static: GET index.html and blazor.server.js
-    Static-->>Browser: Return static files
-    Browser->>Broker: POST /_blazor/negotiate
-    Note over Broker: Generate signed JWT locally
-    Broker-->>Browser: Return SignalR URL and JWT
-    Browser->>SignalR: Connect with JWT (WebSocket)
-    Browser->>SignalR: Start circuit, add Counter, send clicks
-    SignalR->>Backend: Relay messages over existing connection
-    Backend-->>SignalR: Render updates
-    SignalR-->>Browser: Deliver UI updates
-
-    Note over Browser,Backend: No direct browser-to-backend HTTP requests
+    BlazorBackend->>AzureSignalR: Open outbound server connection
+    Browser->>StaticSite: Request page and JavaScript
+    StaticSite-->>Browser: Return static files
+    Browser->>Broker: Negotiate
+    Broker-->>Browser: Return URL and signed JWT
+    Browser->>AzureSignalR: Connect using JWT
+    AzureSignalR->>BlazorBackend: Start circuit
+    BlazorBackend-->>AzureSignalR: Render Counter
+    AzureSignalR-->>Browser: Display Counter
+    Browser->>AzureSignalR: Click button
+    AzureSignalR->>BlazorBackend: Forward event
+    BlazorBackend-->>AzureSignalR: Updated render
+    AzureSignalR-->>Browser: Updated Counter
 ```
+Note over Browser,Backend: No direct browser-to-backend HTTP requests
 
 The browser contacts only the **static site**, **broker**, and **Azure SignalR Service**. The broker generates a connection token but does not carry form traffic. The Blazor backend makes its own **outbound** connection to Azure SignalR; the service then relays interactive messages over that existing connection. The browser never needs an HTTP route to the backend.
 
