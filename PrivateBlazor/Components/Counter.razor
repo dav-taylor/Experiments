@@ -1,0 +1,29 @@
+@using System.Diagnostics
+@using Microsoft.AspNetCore.Components.Web
+@using Microsoft.Extensions.Logging
+@inject ILogger<Counter> Logger
+
+<h3>Counter</h3>
+
+<p>Current count: @count</p>
+
+<button @onclick="Increment">Increment</button>
+
+@code {
+    static readonly ActivitySource Activities = new("Components");
+
+    int count;
+
+    protected override void OnInitialized()
+    {
+        Activity.Current = null;
+        using var activity = Activities.StartActivity("Counter.OnInitialized");
+    }
+
+    void Increment()
+    {
+        using var activity = Activities.StartActivity("Counter.Increment");
+        count++;
+        Logger.LogInformation("Counter incremented to {Count}", count);
+    }
+}

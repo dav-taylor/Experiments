@@ -1,0 +1,34 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8">
+    <base href="/">
+    <title>Isolated Blazor Test</title>
+</head>
+<body>
+    <h1>Isolated Blazor Server</h1>
+
+    <p>This HTML is served by a completely separate static host.</p>
+
+    <div id="counter"></div>
+
+    <script src="/_framework/blazor.server.js" autostart="false"></script>
+
+    <script>
+        async function start() {
+            await Blazor.start({
+                initializers: {
+                    beforeStart: [],
+                    afterStarted: []
+                },
+                configureSignalR: builder =>
+                    builder.withUrl("http://localhost:5102/_blazor", { withCredentials: false })
+            });
+
+            await Blazor.rootComponents.add(document.getElementById("counter"), "counter", {});
+        }
+
+        start().catch(console.error);
+    </script>
+</body>
+</html>

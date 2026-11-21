@@ -1,0 +1,2 @@
+# Keep JavaScript files using LF line endings
+*.js text eol=lf
