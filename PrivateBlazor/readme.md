@@ -2,6 +2,8 @@
 
 A small demonstration of running **Blazor Server components without exposing the Blazor application server to inbound HTTP traffic from the public internet**.
 
+This demo requires an Azure SignalR connection string.  When you launch the application with ```aspire run``` you will be prompted to enter the connection string and optionally save it to your user secrets.
+
 The goal is to substantially reduce the internet-facing attack surface of a Blazor Server application. Instead of exposing the ASP.NET Core backend through a public web endpoint, the browser loads a static page and communicates with the backend through **Azure SignalR Service**. The backend establishes its own outbound connections to that service.
 
 This repository deliberately uses **three small, independent .NET file-based apps** so the architecture is easy to see and experiment with. No custom Blazor transport or framework modifications are needed.
