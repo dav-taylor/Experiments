@@ -60,6 +60,8 @@ Two interchangeable implementations are included:
 - **`broker.cs`** uses Microsoft's `Microsoft.Azure.SignalR.Management` package to generate the negotiation response.
 - **`broker_alternate.cs`** shows the same process at a lower level, using built-in .NET APIs to construct and sign the JWT directly, without the Azure SignalR NuGet package.
 
+When generating JWTs note that Azure SignalR authentication relies on JWTs with time-based validity. Ensure the local system clock is synchronized. If connections return HTTP 401, inspect the WWW-Authenticate response header, verify the current connection string, and allow for potential credential changes during key rotation.
+
 The alternate version makes an important point: **the broker is not a Blazor or SignalR application server**. It is a small token issuer, and the same functionality could be implemented in almost any language or platform, including a **Cloudflare Worker** or an **Azure Function**.
 
 After negotiation, browser traffic goes directly to Azure SignalR Service, not through the broker.  The broker is only required to generate a valid token permitting the user's web browser to connect to Azure SignalR service.
