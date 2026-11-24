@@ -2,6 +2,8 @@
 
 A small demonstration of running **Blazor Server components without exposing the Blazor application server to inbound HTTP traffic from the public internet**.
 
+This demo requires an Azure SignalR connection string.  When you launch the application with ```aspire run``` you will be prompted to enter the connection string and optionally save it to your user secrets.
+
 The goal is to substantially reduce the internet-facing attack surface of a Blazor Server application. Instead of exposing the ASP.NET Core backend through a public web endpoint, the browser loads a static page and communicates with the backend through **Azure SignalR Service**. The backend establishes its own outbound connections to that service.
 
 This repository deliberately uses **three small, independent .NET file-based apps** so the architecture is easy to see and experiment with. No custom Blazor transport or framework modifications are needed.
@@ -13,27 +15,26 @@ The sequence below shows the complete path from loading the static page to click
 ```mermaid
 sequenceDiagram
     participant Browser
-    participant Static as Static site (static.cs)
-    participant Broker as Broker (broker.cs)
-    participant SignalR as Azure SignalR Service
-    participant Backend as Blazor backend (components.cs)
+    participant StaticSite
+    participant Broker
+    participant AzureSignalR
+    participant BlazorBackend
 
-    Note over SignalR,Backend: Backend starts independently
-    Backend->>SignalR: Open outbound server connections
-
-    Browser->>Static: GET index.html and blazor.server.js
-    Static-->>Browser: Return static files
-    Browser->>Broker: POST /_blazor/negotiate
-    Note over Broker: Generate signed JWT locally
-    Broker-->>Browser: Return SignalR URL and JWT
-    Browser->>SignalR: Connect with JWT (WebSocket)
-    Browser->>SignalR: Start circuit, add Counter, send clicks
-    SignalR->>Backend: Relay messages over existing connection
-    Backend-->>SignalR: Render updates
-    SignalR-->>Browser: Deliver UI updates
-
-    Note over Browser,Backend: No direct browser-to-backend HTTP requests
+    BlazorBackend->>AzureSignalR: Open outbound server connection
+    Browser->>StaticSite: Request page and JavaScript
+    StaticSite-->>Browser: Return static files
+    Browser->>Broker: Negotiate
+    Broker-->>Browser: Return URL and signed JWT
+    Browser->>AzureSignalR: Connect using JWT
+    AzureSignalR->>BlazorBackend: Start circuit
+    BlazorBackend-->>AzureSignalR: Render Counter
+    AzureSignalR-->>Browser: Display Counter
+    Browser->>AzureSignalR: Click button
+    AzureSignalR->>BlazorBackend: Forward event
+    BlazorBackend-->>AzureSignalR: Updated render
+    AzureSignalR-->>Browser: Updated Counter
 ```
+Note over Browser,Backend: No direct browser-to-backend HTTP requests
 
 The browser contacts only the **static site**, **broker**, and **Azure SignalR Service**. The broker generates a connection token but does not carry form traffic. The Blazor backend makes its own **outbound** connection to Azure SignalR; the service then relays interactive messages over that existing connection. The browser never needs an HTTP route to the backend.
 
@@ -58,6 +59,8 @@ Two interchangeable implementations are included:
 
 - **`broker.cs`** uses Microsoft's `Microsoft.Azure.SignalR.Management` package to generate the negotiation response.
 - **`broker_alternate.cs`** shows the same process at a lower level, using built-in .NET APIs to construct and sign the JWT directly, without the Azure SignalR NuGet package.
+
+When generating JWTs note that Azure SignalR authentication relies on JWTs with time-based validity. Ensure the local system clock is synchronized. If connections return HTTP 401, inspect the WWW-Authenticate response header, verify the current connection string, and allow for potential credential changes during key rotation.
 
 The alternate version makes an important point: **the broker is not a Blazor or SignalR application server**. It is a small token issuer, and the same functionality could be implemented in almost any language or platform, including a **Cloudflare Worker** or an **Azure Function**.
 
