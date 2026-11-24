@@ -162,7 +162,7 @@ Then open **http://localhost:5101** and click the Counter button. You can also u
 
 The applications are intentionally small, with no traditional solution or project files. The demo uses .NET 11 file-based app features, including `#:include` for the Razor component. **The hosting architecture itself is not specific to .NET 11** and can be implemented with .NET 10 or later using the appropriate project structure.
 
-## Why this matters
+## Summary
 
 In a conventional public Blazor Server deployment, the ASP.NET Core application has a publicly reachable HTTP endpoint. In this design, the public-facing pieces are a static website, a minimal token broker and Microsoft-managed Azure SignalR Service. The application server itself does not need to be reachable through HTTP from the internet.
 
