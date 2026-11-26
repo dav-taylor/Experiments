@@ -16,6 +16,7 @@ using Microsoft.AspNetCore.SignalR.Client;
 using OpenTelemetry;
 using OpenTelemetry.Metrics;
 using OpenTelemetry.Trace;
+using Microsoft.AspNetCore.SignalR;
 
 var builder = WebApplication.CreateBuilder(args);
 builder.Services.AddValidation();
@@ -59,14 +60,15 @@ Task<string?> GenerateTokenAsync()
 // Connect directly to Azure SignalR Service.
 await using var connection = new HubConnectionBuilder()
     .WithUrl(url, options => options.AccessTokenProvider = () => GenerateTokenAsync())
-    .WithAutomaticReconnect()
+    .WithAutomaticReconnect(new RetryPolicy())
     .Build();
 
 var app = builder.Build();
 app.MapGet("/lookup/{name}", async ([RegularExpression(@"\A[a-z0-9]{1,63}\.com\z")] string name) =>
 {
-    using var activity = TelemetrySource.StartActivity("Domain.Lookup");
+    using var activity = TelemetrySource.StartActivity("Domain.Lookup");   
     app.Logger.LogInformation("Sending lookup for {domain} to Azure SignalR Service", name);
+    await connection.WaitUntilConnectedAsync(timeout: TimeSpan.FromSeconds(30));
     return await connection.InvokeAsync<Result>("Lookup", name);  
 });
 
@@ -89,3 +91,42 @@ if (app.Configuration["urls"] is null) app.Urls.Add("http://localhost:5201");
 app.Run();
 
 public record Result(string Domain, string FirstName, string LastName);
+
+// This retry policy controls Azure SignalR Service reconnection attempts.
+public class RetryPolicy : IRetryPolicy
+{
+    public TimeSpan? NextRetryDelay(RetryContext ctx) => ctx.PreviousRetryCount switch
+    {
+        0 => TimeSpan.FromSeconds(0),
+        1 or 2 or 3 => TimeSpan.FromSeconds(2),
+        4 or 5 or 6 => TimeSpan.FromSeconds(5),
+        7 or 8 or 9 => TimeSpan.FromSeconds(10),
+        _ => TimeSpan.FromSeconds(30)
+    };
+}
+
+// This utility method waits for a SignalR connection to be re-established
+public static class HubExtensions
+{
+    extension (HubConnection connection)
+    {
+        public async Task WaitUntilConnectedAsync(TimeSpan? timeout = null, CancellationToken cancellationToken = default)
+        {
+            cancellationToken.ThrowIfCancellationRequested();
+            if (connection.State is HubConnectionState.Connected) return;
+            var wait = timeout ?? TimeSpan.FromSeconds(30);
+            using var cts = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
+            cts.CancelAfter(wait);
+
+            try
+            {
+                while (connection.State is not HubConnectionState.Connected)
+                    await Task.Delay(100, cts.Token);
+            }
+            catch (OperationCanceledException) when (!cancellationToken.IsCancellationRequested)
+            {
+                throw new TimeoutException($"SignalR connection was not established within {wait}.");
+            }
+        }
+    }
+}

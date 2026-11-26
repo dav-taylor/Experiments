@@ -158,6 +158,8 @@ The frontend connects directly to Azure SignalR Service and maintains a SignalR 
 
 The key endpoint is `app.MapGet("/lookup/{name}", ...)`. It starts a `Domain.Lookup` tracing span, logs the operation, and calls `connection.InvokeAsync<Result>("Lookup", name)` to await the backend's response over Azure SignalR Service. It **never makes an HTTP request to the backend**. The .NET SignalR tracing instrumentation can correlate the frontend HTTP request with the backend hub invocation in the Aspire dashboard.
 
+We added a ```RetryPolicy``` to ensure that the frontend will always attempt to reconnect to the backend and never give up.  We also added a simple extension method ```await connection.WaitUntilConnectedAsync(timeout: TimeSpan.FromSeconds(30));``` to wait for a valid connection for up to 30 seconds before sending the  request to the backend. 
+
 The startup retry loop handles the initial connection attempt; automatic reconnection applies after a successful first connection.  See ```frontend.cs``` for full details.
 
 The same concept shown here can be adapted to environments such as Cloudflare.  Note: SignalR is intended to maintain a long-lived connection and is not really suitable for Cloudflare workers.  It would be more appropriate to use a Cloudflare Durable Object to maintain the long lived connection.
